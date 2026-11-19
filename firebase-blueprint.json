@@ -1,0 +1,329 @@
+{
+  "entities": {
+    "RoomSeat": {
+      "title": "RoomSeat",
+      "description": "A human commander seat inside an online multiplayer room.",
+      "type": "object",
+      "properties": {
+        "seatId": {
+          "type": "string",
+          "enum": ["player", "player_2", "player_3", "player_4"]
+        },
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-:]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32
+        },
+        "originId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "startingNationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "combatStyle": {
+          "type": "string",
+          "enum": ["guerilla", "blitz", "fortress", "infiltration"]
+        },
+        "ready": {
+          "type": "boolean"
+        },
+        "connected": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "seatId",
+        "uid",
+        "name",
+        "originId",
+        "startingNationId",
+        "combatStyle",
+        "ready",
+        "connected"
+      ]
+    },
+    "MultiplayerRoom": {
+      "title": "MultiplayerRoom",
+      "description": "Online multiplayer lobby and turn ownership coordinator.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 5,
+          "pattern": "^[A-Z0-9]{5}$"
+        },
+        "hostUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "hostSeatId": {
+          "type": "string",
+          "enum": ["player"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["WAITING", "STARTED", "FINISHED"]
+        },
+        "gameVariant": {
+          "type": "string",
+          "enum": ["CLASSIC", "BLITZ"]
+        },
+        "scenarioId": {
+          "type": "string",
+          "enum": ["modern_2026", "ww2_1939", "cold_war_1962"]
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["Standard", "Brutal"]
+        },
+        "activeUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "activeSeatId": {
+          "type": "string",
+          "enum": ["player", "player_2", "player_3", "player_4"]
+        },
+        "seatUids": {
+          "type": "array",
+          "description": "Bounded list (1 to 4) of participant UIDs."
+        },
+        "seats": {
+          "type": "array",
+          "description": "Bounded list (1 to 4) of RoomSeat objects."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "code",
+        "hostUid",
+        "hostSeatId",
+        "status",
+        "gameVariant",
+        "scenarioId",
+        "difficulty",
+        "activeUid",
+        "activeSeatId",
+        "seatUids",
+        "seats",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "GameStateMeta": {
+      "title": "GameStateMeta",
+      "description": "Core campaign state, players, diplomacy stances, battles, events, and logs.",
+      "type": "object",
+      "properties": {
+        "docType": {
+          "type": "string",
+          "enum": ["meta"]
+        },
+        "roomCode": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 5,
+          "pattern": "^[A-Z0-9]{5}$"
+        },
+        "revision": {
+          "type": "number"
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["PLAYING", "VICTORY", "DEFEAT"]
+        },
+        "gameVariant": {
+          "type": "string",
+          "enum": ["CLASSIC", "BLITZ"]
+        },
+        "scenarioId": {
+          "type": "string",
+          "enum": ["modern_2026", "ww2_1939", "cold_war_1962"]
+        },
+        "difficulty": {
+          "type": "string",
+          "enum": ["Standard", "Brutal"]
+        },
+        "multiplayerType": {
+          "type": "string",
+          "enum": ["ONLINE"]
+        },
+        "activePlayerIndex": {
+          "type": "number"
+        },
+        "awaitingHandoff": {
+          "type": "boolean"
+        },
+        "winnerPlayerId": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "number"
+        },
+        "players": {
+          "type": "array"
+        },
+        "aiWars": {
+          "type": "array"
+        },
+        "activeEvent": {
+          "type": "object"
+        },
+        "pendingBattle": {
+          "type": "object"
+        },
+        "lastBattle": {
+          "type": "object"
+        },
+        "logs": {
+          "type": "array"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "docType",
+        "roomCode",
+        "revision",
+        "mode",
+        "gameVariant",
+        "scenarioId",
+        "difficulty",
+        "multiplayerType",
+        "activePlayerIndex",
+        "awaitingHandoff",
+        "turn",
+        "players",
+        "aiWars",
+        "logs",
+        "updatedByUid",
+        "updatedAt"
+      ]
+    },
+    "GameStateRegions": {
+      "title": "GameStateRegions",
+      "description": "Mutable province ownership, unrest, units, and buildings keyed by regionId.",
+      "type": "object",
+      "properties": {
+        "docType": {
+          "type": "string",
+          "enum": ["regions"]
+        },
+        "roomCode": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 5,
+          "pattern": "^[A-Z0-9]{5}$"
+        },
+        "revision": {
+          "type": "number"
+        },
+        "regions": {
+          "type": "object"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "docType",
+        "roomCode",
+        "revision",
+        "regions",
+        "updatedByUid",
+        "updatedAt"
+      ]
+    },
+    "GameStateNations": {
+      "title": "GameStateNations",
+      "description": "Mutable sovereign nation states keyed by nationId.",
+      "type": "object",
+      "properties": {
+        "docType": {
+          "type": "string",
+          "enum": ["nations"]
+        },
+        "roomCode": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 5,
+          "pattern": "^[A-Z0-9]{5}$"
+        },
+        "revision": {
+          "type": "number"
+        },
+        "nations": {
+          "type": "object"
+        },
+        "updatedByUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "docType",
+        "roomCode",
+        "revision",
+        "nations",
+        "updatedByUid",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/rooms/{roomCode}": {
+      "schema": { "$ref": "#/entities/MultiplayerRoom" },
+      "description": "Online multiplayer room lobby metadata, bounded seats (max 4), and turn authority."
+    },
+    "/rooms/{roomCode}/game/meta": {
+      "schema": { "$ref": "#/entities/GameStateMeta" },
+      "description": "Authoritative multiplayer campaign metadata, player states, events, battles, and logs."
+    },
+    "/rooms/{roomCode}/game/regions": {
+      "schema": { "$ref": "#/entities/GameStateRegions" },
+      "description": "Mutable province ownership, unrest, garrison units, and constructed buildings."
+    },
+    "/rooms/{roomCode}/game/nations": {
+      "schema": { "$ref": "#/entities/GameStateNations" },
+      "description": "Mutable AI nation elimination and stance flags."
+    }
+  }
+}

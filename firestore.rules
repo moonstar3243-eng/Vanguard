@@ -1,0 +1,360 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidRoomCode(code) {
+      return code is string && code.size() == 5 && code.matches('^[A-Z0-9]{5}$');
+    }
+
+    function isValidUid(uid) {
+      return uid is string && uid.size() >= 1 && uid.size() <= 128 && uid.matches('^[a-zA-Z0-9_\\-:]+$');
+    }
+
+    function isValidGameDocId(docId) {
+      return docId in ['meta', 'regions', 'nations'];
+    }
+
+    function isValidSeat(seat) {
+      return seat is map &&
+        seat.keys().hasAll([
+          'seatId',
+          'uid',
+          'name',
+          'originId',
+          'startingNationId',
+          'combatStyle',
+          'ready',
+          'connected'
+        ]) &&
+        seat.keys().hasOnly([
+          'seatId',
+          'uid',
+          'name',
+          'originId',
+          'startingNationId',
+          'combatStyle',
+          'ready',
+          'connected'
+        ]) &&
+        seat.seatId in ['player', 'player_2', 'player_3', 'player_4'] &&
+        isValidUid(seat.uid) &&
+        seat.name is string &&
+        seat.name.size() >= 1 &&
+        seat.name.size() <= 32 &&
+        seat.originId is string &&
+        seat.originId.size() >= 1 &&
+        seat.originId.size() <= 64 &&
+        seat.startingNationId is string &&
+        seat.startingNationId.size() >= 1 &&
+        seat.startingNationId.size() <= 64 &&
+        seat.combatStyle in ['guerilla', 'blitz', 'fortress', 'infiltration'] &&
+        seat.ready is bool &&
+        seat.connected is bool;
+    }
+
+    function isSeatUnchangedOrSelf(oldSeat, newSeat) {
+      return newSeat.uid == oldSeat.uid &&
+        newSeat.seatId == oldSeat.seatId &&
+        (oldSeat.uid == request.auth.uid || newSeat == oldSeat);
+    }
+
+    function isValidRoom(data, roomCode) {
+      return data.keys().hasAll([
+          'code',
+          'hostUid',
+          'hostSeatId',
+          'status',
+          'gameVariant',
+          'scenarioId',
+          'difficulty',
+          'activeUid',
+          'activeSeatId',
+          'seatUids',
+          'seats',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'code',
+          'hostUid',
+          'hostSeatId',
+          'status',
+          'gameVariant',
+          'scenarioId',
+          'difficulty',
+          'activeUid',
+          'activeSeatId',
+          'seatUids',
+          'seats',
+          'createdAt',
+          'updatedAt'
+        ]) &&
+        data.code is string &&
+        isValidRoomCode(data.code) &&
+        data.code == roomCode &&
+        isValidUid(data.hostUid) &&
+        data.hostSeatId == 'player' &&
+        data.status in ['WAITING', 'STARTED', 'FINISHED'] &&
+        data.gameVariant in ['CLASSIC', 'BLITZ'] &&
+        data.scenarioId in ['modern_2026', 'ww2_1939', 'cold_war_1962'] &&
+        data.difficulty in ['Standard', 'Brutal'] &&
+        isValidUid(data.activeUid) &&
+        data.activeSeatId in ['player', 'player_2', 'player_3', 'player_4'] &&
+        data.seatUids is list &&
+        data.seatUids.size() >= 1 &&
+        data.seatUids.size() <= 4 &&
+        isValidUid(data.seatUids[0]) &&
+        data.activeUid in data.seatUids &&
+        data.seats is list &&
+        data.seats.size() == data.seatUids.size() &&
+        isValidSeat(data.seats[0]) &&
+        (data.seats.size() < 2 || isValidSeat(data.seats[1])) &&
+        (data.seats.size() < 3 || isValidSeat(data.seats[2])) &&
+        (data.seats.size() < 4 || isValidSeat(data.seats[3])) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidGameDoc(docId, data, roomCode) {
+      return data.docType is string &&
+        data.docType == docId &&
+        data.roomCode is string &&
+        data.roomCode == roomCode &&
+        data.revision is int &&
+        data.revision >= 1 &&
+        isValidUid(data.updatedByUid) &&
+        data.updatedByUid == request.auth.uid &&
+        data.updatedAt is timestamp &&
+        data.updatedAt == request.time &&
+        (
+          (
+            docId == 'meta' &&
+            data.keys().hasAll([
+              'docType',
+              'roomCode',
+              'revision',
+              'mode',
+              'gameVariant',
+              'scenarioId',
+              'difficulty',
+              'multiplayerType',
+              'activePlayerIndex',
+              'awaitingHandoff',
+              'winnerPlayerId',
+              'turn',
+              'players',
+              'aiWars',
+              'activeEvent',
+              'pendingBattle',
+              'lastBattle',
+              'logs',
+              'updatedByUid',
+              'updatedAt'
+            ]) &&
+            data.keys().hasOnly([
+              'docType',
+              'roomCode',
+              'revision',
+              'mode',
+              'gameVariant',
+              'scenarioId',
+              'difficulty',
+              'multiplayerType',
+              'activePlayerIndex',
+              'awaitingHandoff',
+              'winnerPlayerId',
+              'turn',
+              'players',
+              'aiWars',
+              'activeEvent',
+              'pendingBattle',
+              'lastBattle',
+              'logs',
+              'updatedByUid',
+              'updatedAt'
+            ]) &&
+            data.mode in ['PLAYING', 'VICTORY', 'DEFEAT'] &&
+            data.gameVariant in ['CLASSIC', 'BLITZ'] &&
+            data.scenarioId in ['modern_2026', 'ww2_1939', 'cold_war_1962'] &&
+            data.difficulty in ['Standard', 'Brutal'] &&
+            data.multiplayerType == 'ONLINE' &&
+            data.activePlayerIndex is int &&
+            data.activePlayerIndex >= 0 &&
+            data.activePlayerIndex < data.players.size() &&
+            data.awaitingHandoff is bool &&
+            (data.winnerPlayerId == null || (data.winnerPlayerId is string && data.winnerPlayerId.size() <= 32)) &&
+            data.turn is int &&
+            data.turn >= 1 &&
+            data.players is list &&
+            data.players.size() >= 1 &&
+            data.players.size() <= 4 &&
+            data.players[0] is map &&
+            data.aiWars is list &&
+            data.aiWars.size() <= 500 &&
+            (data.activeEvent == null || data.activeEvent is map) &&
+            (data.pendingBattle == null || data.pendingBattle is map) &&
+            (data.lastBattle == null || data.lastBattle is map) &&
+            data.logs is list &&
+            data.logs.size() <= 50
+          ) ||
+          (
+            docId == 'regions' &&
+            data.keys().hasAll(['docType', 'roomCode', 'revision', 'regions', 'updatedByUid', 'updatedAt']) &&
+            data.keys().hasOnly(['docType', 'roomCode', 'revision', 'regions', 'updatedByUid', 'updatedAt']) &&
+            data.regions is map
+          ) ||
+          (
+            docId == 'nations' &&
+            data.keys().hasAll(['docType', 'roomCode', 'revision', 'nations', 'updatedByUid', 'updatedAt']) &&
+            data.keys().hasOnly(['docType', 'roomCode', 'revision', 'nations', 'updatedByUid', 'updatedAt']) &&
+            data.nations is map
+          )
+        );
+    }
+
+    match /rooms/{roomCode} {
+      // Exact room lookup by 5-char code for joining; list queries restricted to caller's joined rooms
+      allow get: if isSignedIn() && isValidRoomCode(roomCode);
+      allow list: if isSignedIn() && request.auth.uid in resource.data.seatUids;
+
+      allow create: if isVerifiedUser() &&
+        isValidRoomCode(roomCode) &&
+        isValidRoom(incoming(), roomCode) &&
+        incoming().hostUid == request.auth.uid &&
+        incoming().status == 'WAITING' &&
+        incoming().activeUid == request.auth.uid &&
+        incoming().activeSeatId == 'player' &&
+        incoming().seatUids.size() == 1 &&
+        incoming().seatUids[0] == request.auth.uid &&
+        incoming().seats.size() == 1 &&
+        incoming().seats[0].uid == request.auth.uid &&
+        incoming().seats[0].seatId == 'player' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidRoomCode(roomCode) &&
+        isValidRoom(incoming(), roomCode) &&
+        existing().status != 'FINISHED' &&
+        incoming().code == existing().code &&
+        incoming().hostUid == existing().hostUid &&
+        incoming().hostSeatId == existing().hostSeatId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Another verified account joins a WAITING room (<4 players)
+          (
+            existing().status == 'WAITING' &&
+            !(request.auth.uid in existing().seatUids) &&
+            existing().seatUids.size() < 4 &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['seats', 'seatUids', 'updatedAt']) &&
+            incoming().seatUids.size() == existing().seatUids.size() + 1 &&
+            incoming().seatUids.hasAll(existing().seatUids) &&
+            incoming().seatUids[incoming().seatUids.size() - 1] == request.auth.uid &&
+            incoming().seats[incoming().seats.size() - 1].uid == request.auth.uid &&
+            incoming().seats[0] == existing().seats[0] &&
+            (existing().seats.size() < 2 || incoming().seats[1] == existing().seats[1]) &&
+            (existing().seats.size() < 3 || incoming().seats[2] == existing().seats[2])
+          ) ||
+          // Action 2: Joined member updates only their own seat fields
+          (
+            existing().status == 'WAITING' &&
+            request.auth.uid in existing().seatUids &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['seats', 'updatedAt']) &&
+            incoming().seats.size() == existing().seats.size() &&
+            isSeatUnchangedOrSelf(existing().seats[0], incoming().seats[0]) &&
+            (existing().seats.size() < 2 || isSeatUnchangedOrSelf(existing().seats[1], incoming().seats[1])) &&
+            (existing().seats.size() < 3 || isSeatUnchangedOrSelf(existing().seats[2], incoming().seats[2])) &&
+            (existing().seats.size() < 4 || isSeatUnchangedOrSelf(existing().seats[3], incoming().seats[3]))
+          ) ||
+          // Action 3: Non-host leaves lobby while WAITING
+          (
+            existing().status == 'WAITING' &&
+            request.auth.uid in existing().seatUids &&
+            request.auth.uid != existing().hostUid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['seats', 'seatUids', 'updatedAt']) &&
+            !(request.auth.uid in incoming().seatUids) &&
+            incoming().seatUids.size() == existing().seatUids.size() - 1
+          ) ||
+          // Action 4: Host updates campaign settings while WAITING
+          (
+            existing().status == 'WAITING' &&
+            request.auth.uid == existing().hostUid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['gameVariant', 'scenarioId', 'difficulty', 'updatedAt'])
+          ) ||
+          // Action 5: Host starts the campaign atomically with meta, regions, and nations
+          (
+            existing().status == 'WAITING' &&
+            request.auth.uid == existing().hostUid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'activeUid', 'activeSeatId', 'updatedAt']) &&
+            incoming().status == 'STARTED' &&
+            existsAfter(/databases/$(database)/documents/rooms/$(roomCode)/game/meta) &&
+            existsAfter(/databases/$(database)/documents/rooms/$(roomCode)/game/regions) &&
+            existsAfter(/databases/$(database)/documents/rooms/$(roomCode)/game/nations)
+          ) ||
+          // Action 6: Active turn player advances turn or ends match
+          (
+            existing().status == 'STARTED' &&
+            request.auth.uid == existing().activeUid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'activeUid', 'activeSeatId', 'updatedAt']) &&
+            incoming().status in ['STARTED', 'FINISHED'] &&
+            incoming().activeUid in existing().seatUids
+          )
+        );
+
+      allow delete: if isVerifiedUser() &&
+        isValidRoomCode(roomCode) &&
+        existing().hostUid == request.auth.uid &&
+        existing().status == 'WAITING';
+
+      match /game/{docId} {
+        allow get: if isSignedIn() &&
+          isValidRoomCode(roomCode) &&
+          isValidGameDocId(docId) &&
+          request.auth.uid in get(/databases/$(database)/documents/rooms/$(roomCode)).data.seatUids;
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser() &&
+          isValidRoomCode(roomCode) &&
+          isValidGameDocId(docId) &&
+          isValidGameDoc(docId, incoming(), roomCode) &&
+          getAfter(/databases/$(database)/documents/rooms/$(roomCode)).data.hostUid == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/rooms/$(roomCode)).data.status == 'STARTED';
+
+        allow update: if isVerifiedUser() &&
+          isValidRoomCode(roomCode) &&
+          isValidGameDocId(docId) &&
+          isValidGameDoc(docId, incoming(), roomCode) &&
+          get(/databases/$(database)/documents/rooms/$(roomCode)).data.status == 'STARTED' &&
+          get(/databases/$(database)/documents/rooms/$(roomCode)).data.activeUid == request.auth.uid &&
+          incoming().roomCode == existing().roomCode &&
+          incoming().docType == existing().docType &&
+          incoming().revision == existing().revision + 1;
+
+        allow delete: if false;
+      }
+    }
+  }
+}
